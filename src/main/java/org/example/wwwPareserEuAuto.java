@@ -6,6 +6,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -14,11 +16,12 @@ import java.io.IOException;
 public class wwwPareserEuAuto {
 
     static final int MAX_ATTEMPTS = 5;
+    private static final Logger logger = LoggerFactory.getLogger(wwwPareserEuAuto.class);
 
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
-        int numberOfPages = 0;
+        int numberOfPages;
         String url = "http://www.euautomation.com/us/manufacturers/pacific-scientific/";
         String filePath = "EUAUTO_pacific-scientific.csv";
         Connection connection = Jsoup.connect(url)
@@ -27,17 +30,7 @@ public class wwwPareserEuAuto {
                 .timeout(6000)
                 .ignoreContentType(true);
         Document manufacturersMain = connection.url(url).get();
-        Element elementInMain = manufacturersMain.selectFirst("span.text-sm");
-        String[] temporary = elementInMain.text().split(" ");
-        int itemNumber = Integer.parseInt(temporary[1].replace(",",""));
-        numberOfPages = itemNumber / 8;
-        if(itemNumber % 8 != 0){
-            numberOfPages = (int)Math.ceil((double) itemNumber/8);
-
-        }
-        if(numberOfPages > 9999){
-            numberOfPages = 9999;
-        }
+        numberOfPages = getNumberOfPages(manufacturersMain);
         System.out.println(numberOfPages);
 
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
@@ -77,11 +70,30 @@ public class wwwPareserEuAuto {
                             bwe.append("Failed to parse :").append(page);
                             bwe.newLine();
                         }
-                        e.printStackTrace();
+                        logger.error("An error occurred",e);
                     }
                 }
             }
         }
+    }
+
+    private static int getNumberOfPages(Document manufacturersMain) {
+        int numberOfPages;
+        Element elementInMain = manufacturersMain.selectFirst("span.text-sm");
+        if(elementInMain == null){
+            return 0;
+        }
+        String[] temporary = elementInMain.text().split(" ");
+        int itemNumber = Integer.parseInt(temporary[1].replace(",",""));
+        numberOfPages = itemNumber / 8;
+        if(itemNumber % 8 != 0){
+            numberOfPages = (int)Math.ceil((double) itemNumber/8);
+
+        }
+        if(numberOfPages > 9999){
+            numberOfPages = 9999;
+        }
+        return numberOfPages;
     }
 }
 
